@@ -28,8 +28,8 @@
 #include "mevel.h"
 #include "queue.h"
 
-// curl http://192.168.1.10:5251 --data 'hello world' 
-// echo -n "This is my data" > /dev/udp/192.168.1.10/5252
+// curl http://localhost:5251 --data 'this is tcp'
+// echo -n "this is udp" > /dev/udp/127.0.0.1/5252
 
 mevel_ctx_t*   ctx;
 
@@ -195,12 +195,11 @@ int main(int argc, char** argv)
     if (mevel_add(ctx, tcpx) != MEVEL_ERR_NONE) err("mevel_add()");
 
 
+    // echo -n "This is my data" > /dev/udp/127.0.0.1/5252 
     mevel_event_t* udpx = mevel_ini_udp(ctx, cb_udp, MEVEL_IPV4, "127.0.0.1", 5252, MEVEL_READ);
     if (mevel_add(ctx, udpx) != MEVEL_ERR_NONE) err("mevel_add()");
 
-    printf("-----------------------------------\n");
     mevel_run(ctx);
-    printf("-----------------------------------\n");
 
     cleanup();
 
