@@ -30,6 +30,7 @@
 #include <sys/epoll.h>
 
 #include "types.h"
+#include "queue.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,6 +42,7 @@ extern "C" {
 typedef struct {
     int             epollfd;    // epoll file descriptor
     char            running;    // atomic event loop state
+    queue_ctx_t*    qctx;
 } mevel_ctx_t;
 
 typedef struct mevel_event {

@@ -20,6 +20,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <stdio.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -28,13 +29,8 @@
 #include <sys/signalfd.h>
 #include <sys/un.h>
 
-#include "queue.h"
 #include "mevel.h"
 
-
-#include <stdio.h>
-
-static queue_ctx_t* qctx;
 
 mevel_ctx_t* mevel_ini()
 {
@@ -53,8 +49,8 @@ mevel_ctx_t* mevel_ini()
 
     if (ctx)
     {
-        qctx = queue_ini();
-        if (qctx == NULL)
+        ctx->qctx = queue_ini();
+        if (ctx->qctx == NULL)
         {
 	        free(ctx);
 	        ctx = NULL;
@@ -67,14 +63,16 @@ mevel_ctx_t* mevel_ini()
 
 void    mevel_rel(mevel_ctx_t* ctx)
 {
+
     if (ctx)
     {
+
+        queue_rel_ptr(ctx->qctx);
+
         if (ctx->epollfd > 0) close(ctx->epollfd);
         free(ctx);
         ctx = NULL;
     }
-
-    queue_rel_ptr(qctx);
 }
 
 mevel_err_t mevel_run(mevel_ctx_t* ctx)
@@ -153,7 +151,7 @@ mevel_err_t     mevel_add(mevel_ctx_t* ctx, mevel_event_t* ev)
 		}
 		else
 		{
-		    queue_put(qctx, ev);
+		    queue_put(ctx->qctx, ev);
 		    ret = MEVEL_ERR_NONE;
 		}
     }
@@ -173,7 +171,7 @@ mevel_err_t     mevel_del(mevel_ctx_t* ctx, mevel_event_t* ev)
 		}
 
         if (ev->fd > 0) close(ev->fd);
-        queue_del_ptr(qctx, ev);
+        queue_del_ptr(ctx->qctx, ev);
     }
     else ret = MEVEL_ERR_NULL;
 
