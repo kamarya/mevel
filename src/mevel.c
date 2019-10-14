@@ -118,7 +118,7 @@ mevel_err_t mevel_run(mevel_ctx_t* ctx)
                     int fd = accept4(ev->fd, (struct sockaddr*)&peer, &plen, SOCK_NONBLOCK);
                     if (fd > 0)
                     {
-                        mevel_add(ctx, mevel_ini_io(ctx, ev->cb, fd, ev->evmask));
+                        mevel_add(ctx, mevel_ini_fio(ctx, ev->cb, fd, ev->evmask));
                     }
                 }
                 else if (ev->cb != NULL)
@@ -179,7 +179,7 @@ mevel_err_t     mevel_del(mevel_ctx_t* ctx, mevel_event_t* ev)
 }
 
 
-mevel_event_t*  mevel_ini_io(mevel_ctx_t* ctx, mevel_cb_t cb, int fd, int evmask)
+mevel_event_t*  mevel_ini_fio(mevel_ctx_t* ctx, mevel_cb_t cb, int fd, int evmask)
 {
     mevel_event_t* ev = (mevel_event_t*) malloc(sizeof(mevel_event_t));
 
@@ -207,7 +207,7 @@ mevel_event_t*  mevel_ini_tot(mevel_ctx_t* ctx, mevel_cb_t cb, int timeout, int 
         ev->ctx             = ctx;
         ev->type            = MEVEL_TYPE_TIMER;
         ev->cb              = cb;
-        ev->event.events    = MEVEL_EDGE | MEVEL_READ; 
+        ev->event.events    = MEVEL_EDGE | MEVEL_READ;
         ev->fd              = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
 
         if (ev->fd > 0)
@@ -391,18 +391,17 @@ mevel_event_t*  mevel_ini_udp(mevel_ctx_t* ctx, mevel_cb_t cb, int stype, const 
     return ev;
 }
 
-mevel_event_t*  mevel_ini_sig(mevel_ctx_t* ctx, mevel_cb_t cb, int signum)
+mevel_event_t*  mevel_ini_sig(mevel_ctx_t* ctx, mevel_cb_t cb)
 {
     mevel_event_t* ev = (mevel_event_t*) malloc(sizeof(mevel_event_t));
 
     if (ev == NULL) return NULL;
 
     sigemptyset(&ev->smask);
-    sigaddset(&ev->smask, signum);
 
     ev->ctx             = ctx;
     ev->type            = MEVEL_TYPE_SIGNAL;
-    ev->event.events    = MEVEL_READ; 
+    ev->event.events    = MEVEL_READ;
     ev->cb              = cb;
     ev->fd              = 0;
 
@@ -421,7 +420,7 @@ mevel_event_t*  mevel_ini_sig(mevel_ctx_t* ctx, mevel_cb_t cb, int signum)
 }
 
 
-mevel_err_t mevel_add_sig(mevel_event_t* ev, int signum)
+mevel_err_t mevel_ini_sig_add(mevel_event_t* ev, int signum)
 {
     mevel_err_t ret = MEVEL_ERR_SIGNAL;
 
@@ -439,4 +438,67 @@ mevel_err_t mevel_add_sig(mevel_event_t* ev, int signum)
     }
 
     return ret;
+}
+
+mevel_err_t  mevel_add_fio(mevel_ctx_t* ctx, mevel_cb_t cb, int fd, int evmask)
+{
+    mevel_event_t* event = mevel_ini_fio(ctx, cb, fd, evmask);
+    if (!event) return MEVEL_ERR_NULL;
+
+    return mevel_add(ctx, event);
+}
+
+mevel_err_t  mevel_add_tot(mevel_ctx_t* ctx, mevel_cb_t cb, int timeout, int period)
+{
+    mevel_event_t* event = mevel_ini_tot(ctx, cb, timeout, period);
+    if (!event) return MEVEL_ERR_NULL;
+
+    return mevel_add(ctx, event);
+}
+
+mevel_err_t  mevel_add_tcp(mevel_ctx_t* ctx, mevel_cb_t cb, int stype, const char* straddr, int port, int evmask)
+{
+    mevel_event_t* event = mevel_ini_tcp(ctx, cb, stype, straddr, port, evmask);
+    if (!event) return MEVEL_ERR_NULL;
+
+    return mevel_add(ctx, event);
+}
+
+mevel_err_t  mevel_add_udp(mevel_ctx_t* ctx, mevel_cb_t cb, int stype, const char* straddr, int port, int evmask)
+{
+    mevel_event_t* event = mevel_ini_udp(ctx, cb, stype, straddr, port, evmask);
+    if (!event) return MEVEL_ERR_NULL;
+
+    return mevel_add(ctx, event);
+}
+
+mevel_err_t  mevel_add_sig(mevel_ctx_t* ctx, mevel_cb_t cb, int count, ...)
+{
+    if (count < 1) return MEVEL_ERR_SIGNAL;
+
+    mevel_event_t* event = mevel_ini_sig(ctx, cb);
+    if (!event) return MEVEL_ERR_NULL;
+
+    mevel_err_t ret = MEVEL_ERR_NONE;
+    va_list argp;
+    va_start(argp, count);
+    for (int i = 0; i < count; i++)
+    {
+        int sig = va_arg(argp, int);
+        if (mevel_ini_sig_add(event, sig) != MEVEL_ERR_NONE)
+        {
+            ret = MEVEL_ERR_SIGNAL;
+            break;
+        }
+    }
+    va_end(argp);
+
+    if (ret)
+    {
+        close(event->fd);
+        free(event);
+        return ret;
+    }
+
+    return mevel_add(ctx, event);
 }

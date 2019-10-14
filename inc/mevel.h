@@ -18,6 +18,7 @@
 #define __MEVEL_H__
 
 #include <stdlib.h>
+#include <stdarg.h>
 #include <stddef.h>
 
 #include <arpa/inet.h>
@@ -63,12 +64,19 @@ void            mevel_rel(mevel_ctx_t*);
 mevel_err_t     mevel_run(mevel_ctx_t*);
 mevel_err_t     mevel_add(mevel_ctx_t*, mevel_event_t*);
 mevel_err_t     mevel_del(mevel_ctx_t*, mevel_event_t*);
-mevel_event_t*  mevel_ini_io(mevel_ctx_t*, mevel_cb_t, int, int);
+
+mevel_err_t     mevel_add_fio(mevel_ctx_t*, mevel_cb_t, int, int);
+mevel_err_t     mevel_add_tot(mevel_ctx_t*, mevel_cb_t, int, int);
+mevel_err_t     mevel_add_tcp(mevel_ctx_t*, mevel_cb_t, int, const char*, int, int);
+mevel_err_t     mevel_add_udp(mevel_ctx_t*, mevel_cb_t, int, const char*, int, int);
+mevel_err_t     mevel_add_sig(mevel_ctx_t*, mevel_cb_t, int, ...);
+
+mevel_event_t*  mevel_ini_fio(mevel_ctx_t*, mevel_cb_t, int, int);
 mevel_event_t*  mevel_ini_tot(mevel_ctx_t*, mevel_cb_t, int, int);
 mevel_event_t*  mevel_ini_tcp(mevel_ctx_t*, mevel_cb_t, int, const char*, int, int);
 mevel_event_t*  mevel_ini_udp(mevel_ctx_t*, mevel_cb_t, int, const char*, int, int);
-mevel_event_t*  mevel_ini_sig(mevel_ctx_t*, mevel_cb_t, int);
-mevel_err_t     mevel_add_sig(mevel_event_t*, int);
+mevel_event_t*  mevel_ini_sig(mevel_ctx_t*, mevel_cb_t);
+mevel_err_t     mevel_ini_sig_add(mevel_event_t*, int);
 
 #ifdef __cplusplus
 } // extern "C"
