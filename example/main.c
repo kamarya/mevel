@@ -113,7 +113,7 @@ mevel_err_t  sig_handle(mevel_event_t* ev, int flags)
     if (res != sizeof(si))
         return MEVEL_ERR_SIGNAL;
 
-    printf("\nsignal received (%d).\n", si.ssi_signo);
+    printf("\rsignal received (%d).\n", si.ssi_signo);
 
     cleanup();
 
@@ -163,29 +163,9 @@ int main(int argc, char** argv)
     if (tox) mevel_add(ctx,tox);
     else err("mevel_ini_to()");
 
-    mevel_event_t*  sigx = mevel_ini_sig(ctx, sig_handle, SIGTERM);
-    if (!sigx) err("mevel_sig_ini()");
-    if (mevel_add_sig(sigx, SIGUSR1) == MEVEL_ERR_NONE)
+    if (mevel_add_sig(ctx, sig_handle, 3, SIGTERM, SIGINT, SIGQUIT))
     {
-        if (mevel_add_sig(sigx, SIGHUP) == MEVEL_ERR_NONE)
-        {
-            if (mevel_add_sig(sigx, SIGINT) == MEVEL_ERR_NONE)
-            {
-                mevel_add(ctx, sigx);
-            }
-            else
-            {
-                err("mevel_add_sig(SIGINT)");
-            }
-        }
-        else
-        {
-            err("mevel_add_sig(SIGHUP)");
-        }
-    }
-    else
-    {
-        err("mevel_add_sig(SIGUSR1)");
+        err("mevel_ad_sig()");
     }
 
 
@@ -195,7 +175,7 @@ int main(int argc, char** argv)
     if (mevel_add(ctx, tcpx) != MEVEL_ERR_NONE) err("mevel_add()");
 
 
-    // echo -n "This is my data" > /dev/udp/127.0.0.1/5252 
+    // echo -n "This is my data" > /dev/udp/127.0.0.1/5252
     mevel_event_t* udpx = mevel_ini_udp(ctx, cb_udp, MEVEL_IPV4, "127.0.0.1", 5252, MEVEL_READ);
     if (mevel_add(ctx, udpx) != MEVEL_ERR_NONE) err("mevel_add()");
 
