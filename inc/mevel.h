@@ -1,5 +1,5 @@
 /*
- *   Copyright 2018 Behrooz Kamary Aliabadi
+ *   Copyright 2018 Behrooz Kamary
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -60,22 +60,111 @@ typedef mevel_err_t (mevel_cb_t)(mevel_event_t*, int);
 
 
 mevel_ctx_t*    mevel_ini();
+
+/**
+ * @brief mevel_rel releases the context
+ *
+ */
 void            mevel_rel(mevel_ctx_t*);
+
+/**
+ * @brief mevel_run runs the event loop and block
+ *
+ * @return mevel_err_t
+ */
 mevel_err_t     mevel_run(mevel_ctx_t*);
+
+/**
+ * @brief mevel_add
+ *
+ * @return mevel_err_t
+ */
 mevel_err_t     mevel_add(mevel_ctx_t*, mevel_event_t*);
+
+/**
+ * @brief mevel_del
+ *
+ * @return mevel_err_t
+ */
 mevel_err_t     mevel_del(mevel_ctx_t*, mevel_event_t*);
 
-mevel_err_t     mevel_add_fio(mevel_ctx_t*, mevel_cb_t, int, int);
-mevel_err_t     mevel_add_tot(mevel_ctx_t*, mevel_cb_t, int, int);
+/**
+ * @brief mevel_add_fio() adds a file I/O event
+ *
+ * @return mevel_err_t
+ */
+mevel_err_t     mevel_add_fio(mevel_ctx_t*, mevel_cb_t, int fd, int evmask);
+
+/**
+ * @brief mevel_add_tot()
+ *
+ * @param timeout specifies the initial expiration of the timer
+ * @param period specifies the repeated timer interval
+ * @return mevel_err_t
+ */
+mevel_err_t     mevel_add_tot(mevel_ctx_t*, mevel_cb_t, int timeout, int period);
+
+/**
+ * @brief mevel_add_tcp()
+ *
+ * @return mevel_err_t
+ */
 mevel_err_t     mevel_add_tcp(mevel_ctx_t*, mevel_cb_t, int, const char*, int, int);
+
+/**
+ * @brief mevel_add_udp()
+ *
+ * @return mevel_err_t
+ */
 mevel_err_t     mevel_add_udp(mevel_ctx_t*, mevel_cb_t, int, const char*, int, int);
+
+/**
+ * @brief mevel_add_sig()
+ *
+ * @return mevel_err_t
+ */
 mevel_err_t     mevel_add_sig(mevel_ctx_t*, mevel_cb_t, int, ...);
 
-mevel_event_t*  mevel_ini_fio(mevel_ctx_t*, mevel_cb_t, int, int);
-mevel_event_t*  mevel_ini_tot(mevel_ctx_t*, mevel_cb_t, int, int);
+/**
+ * @brief mevel_ini_fio() creates a file I/O event context
+ *
+ * @return mevel_event_t*
+ */
+mevel_event_t*  mevel_ini_fio(mevel_ctx_t*, mevel_cb_t, int fd, int evmask);
+
+/**
+ * @brief mevel_ini_tot()
+ *
+ * @return mevel_event_t*
+ */
+mevel_event_t*  mevel_ini_tot(mevel_ctx_t*, mevel_cb_t, int timeout, int period);
+
+/**
+ * @brief mevel_ini_tcp()
+ *
+ * @return mevel_event_t*
+ */
 mevel_event_t*  mevel_ini_tcp(mevel_ctx_t*, mevel_cb_t, int, const char*, int, int);
+
+/**
+ * @brief mevel_ini_udp()
+ *
+ * @return mevel_event_t*
+ */
 mevel_event_t*  mevel_ini_udp(mevel_ctx_t*, mevel_cb_t, int, const char*, int, int);
+
+/**
+ * @brief mevel_ini_sig()
+ *
+ * @return mevel_event_t*
+ */
 mevel_event_t*  mevel_ini_sig(mevel_ctx_t*, mevel_cb_t);
+
+/**
+ * @brief mevel_ini_sig_add()
+ *
+ * @return mevel_err_t
+ */
 mevel_err_t     mevel_ini_sig_add(mevel_event_t*, int);
 
 #ifdef __cplusplus
