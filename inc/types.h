@@ -1,5 +1,5 @@
 /*
- *   Copyright 2018 Behrooz Kamary Aliabadi
+ *   Copyright 2018 Behrooz Kamary
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 #ifndef __TYPES_H__
 #define __TYPES_H__
+
+#include <sys/epoll.h>
 
 #define MEVEL_MAX_EVENTS    10
 #define MEVEL_MAX_TIMEOUT   2000
@@ -34,6 +36,9 @@
 #define MEVEL_IPV4          AF_INET
 #define MEVEL_UNIX          AF_UNIX
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct epoll_event epoll_event_t;
 
@@ -57,6 +62,9 @@ typedef enum {
     MEVEL_ERR_SIGNAL,
 } mevel_err_t;
 
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 
 #endif

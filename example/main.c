@@ -25,8 +25,9 @@
 #include <time.h>
 #include <signal.h>
 #include <sys/signalfd.h>
-#include "mevel.h"
-#include "queue.h"
+
+#include <mevel.h>
+#include <queue.h>
 
 // curl http://localhost:5251 --data 'this is tcp'
 // echo -n "this is udp" > /dev/udp/127.0.0.1/5252
@@ -113,7 +114,7 @@ mevel_err_t  sig_handle(mevel_event_t* ev, int flags)
     if (res != sizeof(si))
         return MEVEL_ERR_SIGNAL;
 
-    printf("\rsignal received (%d).\n", si.ssi_signo);
+    printf("\rreceived signal (%d).\n", si.ssi_signo);
 
     cleanup();
 
