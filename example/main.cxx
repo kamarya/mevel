@@ -15,10 +15,29 @@
 
 #include <iostream>
 
-#include "mevel.hpp"
+#include <unistd.h>
+
+#include <mevel.hpp>
+
+mevel::error_en  timer(const mevel::mevent& ev, int flags)
+{
+    static uint64_t exp = 0;
+    static uint64_t tot_exp = 0;
+
+    if (read(ev.fd, &exp, sizeof(uint64_t)) != sizeof(uint64_t)) return mevel::MEVEL_ERR_TIMER;
+
+    tot_exp += exp;
+    printf("read: %llu; total=%llu\n", (unsigned long long) exp, (unsigned long long) tot_exp);
+
+    if (tot_exp > 20) return mevel::MEVEL_ERR_STOP;
+
+    return mevel::MEVEL_ERR_NONE;
+}
 
 int main (int argc, char** argv)
 {
-    mevel evlp;
+    mevel::mevel evlp;
+    evlp.add_timer(timer, 500, 500);
+    evlp.run();
     return EXIT_SUCCESS;
 }

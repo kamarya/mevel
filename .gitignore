@@ -53,3 +53,8 @@ dkms.conf
 
 .vscode/
 .DS_Store
+
+.c.o
+.cpp.o
+mainc
+maincxx
