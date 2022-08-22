@@ -94,7 +94,7 @@ bool mevel::run()
                 {
                     if (ev.cb(ev, events[indx].events) != MEVEL_ERR_NONE)
                     {
-                        if (!del(ev)) throw std::runtime_error("event deletion failed.");
+                        del(ev);
                     }
                 }
                 else
@@ -108,7 +108,7 @@ bool mevel::run()
     return true;
 }
 
-bool mevel::add(mevent ev)
+void mevel::add(mevent ev)
 {
     ev.event.data.fd = ev.fd;
 
@@ -118,28 +118,29 @@ bool mevel::add(mevent ev)
     }
 
     eventmap.insert(std::make_pair(ev.fd, ev));
-
-    return true;
 }
 
-bool mevel::del(mevent ev)
+void mevel::del(mevent ev)
 {
-    if (eventmap.find(ev.fd) == eventmap.end())
-    {
-        throw exception("this event has not been registered", MEVEL_ERR_DEL);
-    }
-
     if (epoll_ctl(epollfd, EPOLL_CTL_DEL, ev.fd, &ev.event) < 0)
     {
         throw exception("delete from the main event loop failed", MEVEL_ERR_DEL);
     }
 
-    if (ev.fd > 0) ::close(ev.fd);
+    if (eventmap.find(ev.fd) == eventmap.end())
+    {
+        throw exception("this event has not been registered", MEVEL_ERR_DEL);
+    }
 
-    return (eventmap.erase(ev.fd) == 1);
+    if (eventmap.erase(ev.fd) != 1)
+    {
+        throw exception("this event erasure failed", MEVEL_ERR_DEL);
+    }
+
+    if (ev.fd > 0) ::close(ev.fd);
 }
 
-bool mevel::add_fio(callback_t cb, int fd, int evmask)
+void mevel::add_fio(callback_t cb, int fd, int evmask)
 {
     mevent              ev;
     ev.type             = MEVEL_TYPE_IO;
@@ -147,10 +148,10 @@ bool mevel::add_fio(callback_t cb, int fd, int evmask)
     ev.event.events     = evmask;
     ev.fd               = fd;
 
-    return add(ev);
+    add(ev);
 }
 
-bool mevel::add_timer(callback_t cb, int timeout, int period)
+void mevel::add_timer(callback_t cb, int timeout, int period)
 {
     mevent              ev;
     ev.type             = MEVEL_TYPE_TIMER;
@@ -158,28 +159,27 @@ bool mevel::add_timer(callback_t cb, int timeout, int period)
     ev.event.events     = MEVEL_EDGE | MEVEL_READ;
     ev.fd               = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
 
-    if (ev.fd > 0)
+    if (ev.fd < 0) throw exception("adding timer failed; file descriptor is negetive", MEVEL_ERR_TIMER);
+
+    struct timespec     ts;
+    struct itimerspec   itime;
+
+    ts.tv_sec           = timeout / 1000;
+    ts.tv_nsec          = (timeout % 1000) * 1000000;
+    itime.it_value      = ts;
+
+    ts.tv_sec           = period / 1000;
+    ts.tv_nsec          = (period % 1000) * 1000000;
+    itime.it_interval   = ts;
+
+    if (timerfd_settime(ev.fd, 0, &itime, NULL) < 0)
     {
-        struct timespec     ts;
-        struct itimerspec   itime;
-
-        ts.tv_sec           = timeout / 1000;
-        ts.tv_nsec          = (timeout % 1000) * 1000000;
-        itime.it_value      = ts;
-
-        ts.tv_sec           = period / 1000;
-        ts.tv_nsec          = (period % 1000) * 1000000;
-        itime.it_interval   = ts;
-
-        if (timerfd_settime(ev.fd, 0, &itime, NULL) < 0)
-        {
-            ::close(ev.fd);
-            ev.fd = -1;
-            return false;
-        }
+        ::close(ev.fd);
+        ev.fd = -1;
+        throw exception("adding timer failed", MEVEL_ERR_TIMER);
     }
 
-    return add(ev);
+    add(ev);
 }
 
 }
