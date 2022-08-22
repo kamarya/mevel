@@ -92,10 +92,12 @@ public:
     mevel();
     ~mevel();
 
-    bool add(mevent ev);
-    bool add_timer(callback_t cb, int timeout, int period);
-    bool add_fio(callback_t cb, int fd, int evmask);
-    bool del(mevent ev);
+    void add(mevent ev);
+    void add_timer(callback_t cb, int timeout, int period);
+    void add_fio(callback_t cb, int fd, int evmask);
+    bool add_tcp();
+    bool add_udp();
+    void del(mevent ev);
     bool run();
 };
 
