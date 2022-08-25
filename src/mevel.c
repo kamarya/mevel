@@ -66,7 +66,6 @@ void    mevel_rel(mevel_ctx_t* ctx)
 
     if (ctx)
     {
-
         queue_rel_ptr(ctx->qctx);
 
         if (ctx->epollfd > 0) close(ctx->epollfd);
@@ -121,14 +120,8 @@ mevel_err_t mevel_run(mevel_ctx_t* ctx)
                         mevel_add(ctx, mevel_ini_fio(ctx, ev->cb, fd, ev->evmask));
                     }
                 }
-                else if (ev->cb != NULL)
-                {
-                    if (ev->cb(ev, events[indx].events) != MEVEL_ERR_NONE) mevel_del(ctx, ev);
-                }
-                else
-                {
-                    mevel_del(ctx, ev);
-                }
+
+                if (ev->cb(ev, events[indx].events) != MEVEL_ERR_NONE) mevel_del(ctx, ev);
             }
         }
     }
