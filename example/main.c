@@ -1,5 +1,5 @@
 /*
- *   Copyright 2018 Behrooz Kamary Aliabadi
+ *   Copyright 2018 Behrooz Kamary
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <time.h>
-#include <signal.h>
 #include <sys/signalfd.h>
 
 #include <mevel.h>
@@ -100,7 +99,7 @@ mevel_err_t  timer(mevel_event_t* ev, int flags)
     tot_exp += exp;
     printf("read: %llu; total=%llu\n", (unsigned long long) exp, (unsigned long long) tot_exp);
 
-    if (tot_exp > 20) return MEVEL_ERR_STOP;// ev->ctx->running = 0;
+    if (tot_exp > 20) return MEVEL_ERR_CLOSE;
 
     return MEVEL_ERR_NONE;
 }
@@ -160,9 +159,9 @@ int main(int argc, char** argv)
     ctx = mevel_ini();
     if (!ctx) err("mevel_ini()");
 
-    mevel_event_t* tox = mevel_ini_tot(ctx, timer, 500, 500);
+    mevel_event_t* tox = mevel_ini_timer(ctx, timer, 500, 500);
     if (tox) mevel_add(ctx,tox);
-    else err("mevel_ini_to()");
+    else err("mevel_ini_timer()");
 
     if (mevel_add_sig(ctx, sig_handle, 3, SIGTERM, SIGINT, SIGQUIT))
     {

@@ -16,7 +16,8 @@
 #include <iostream>
 
 #include <unistd.h>
-
+#include <signal.h>
+#include <sys/signalfd.h>
 #include <mevel.hpp>
 
 mevel::error_en  timer(const mevel::mevent& ev, int flags)
@@ -34,10 +35,30 @@ mevel::error_en  timer(const mevel::mevent& ev, int flags)
     return mevel::MEVEL_ERR_NONE;
 }
 
+mevel::error_en  sig_handler(const mevel::mevent& ev, int flags)
+{
+    struct signalfd_siginfo si;
+	ssize_t res = read(ev.fd, &si, sizeof(si));
+
+    if (res != sizeof(si))
+        return mevel::MEVEL_ERR_NONE;
+
+    printf("\rreceived signal (%d).\n", si.ssi_signo);
+
+    exit(EXIT_SUCCESS);
+
+    return mevel::MEVEL_ERR_NONE;
+}
+
 int main (int argc, char** argv)
 {
     mevel::mevel evlp;
     evlp.add_timer(timer, 500, 500);
+    if (!evlp.add_signal(sig_handler, {SIGTERM, SIGINT, SIGQUIT}))
+    {
+        return EXIT_FAILURE;
+    }
+
     evlp.run();
     return EXIT_SUCCESS;
 }

@@ -1,7 +1,7 @@
 CC=gcc
 CXX=g++
 CFLAGS=-g3 -Wall -std=gnu11 -I./inc -L.
-CXXFLAGS=-g3 -Wall -std=c++11 -I./inc -L.
+CXXFLAGS=-g3 -Wall -Wdouble-promotion -std=c++11 -I./inc -L.
 
 
 .PHONY: all

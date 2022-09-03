@@ -96,13 +96,13 @@ mevel_err_t     mevel_del(mevel_ctx_t*, mevel_event_t*);
 mevel_err_t     mevel_add_fio(mevel_ctx_t*, mevel_cb_t, int fd, int evmask);
 
 /**
- * @brief mevel_add_tot()
+ * @brief mevel_add_timer()
  *
  * @param timeout specifies the initial expiration of the timer
  * @param period specifies the repeated timer interval
  * @return mevel_err_t
  */
-mevel_err_t     mevel_add_tot(mevel_ctx_t*, mevel_cb_t, int timeout, int period);
+mevel_err_t     mevel_add_timer(mevel_ctx_t*, mevel_cb_t, int timeout, int period);
 
 /**
  * @brief mevel_add_tcp()
@@ -133,11 +133,11 @@ mevel_err_t     mevel_add_sig(mevel_ctx_t*, mevel_cb_t, int, ...);
 mevel_event_t*  mevel_ini_fio(mevel_ctx_t*, mevel_cb_t, int fd, int evmask);
 
 /**
- * @brief mevel_ini_tot()
+ * @brief mevel_ini_timer()
  *
  * @return mevel_event_t*
  */
-mevel_event_t*  mevel_ini_tot(mevel_ctx_t*, mevel_cb_t, int timeout, int period);
+mevel_event_t*  mevel_ini_timer(mevel_ctx_t*, mevel_cb_t, int timeout, int period);
 
 /**
  * @brief mevel_ini_tcp()

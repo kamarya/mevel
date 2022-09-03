@@ -121,7 +121,12 @@ mevel_err_t mevel_run(mevel_ctx_t* ctx)
                     }
                 }
 
-                if (ev->cb(ev, events[indx].events) != MEVEL_ERR_NONE) mevel_del(ctx, ev);
+                mevel_err_t cbr = ev->cb(ev, events[indx].events);
+                if (cbr != MEVEL_ERR_NONE)
+                {
+                    mevel_del(ctx, ev);
+                    if (cbr == MEVEL_ERR_CLOSE && ev->fd > 0) close(ev->fd);
+                }
             }
         }
     }
@@ -189,7 +194,7 @@ mevel_event_t*  mevel_ini_fio(mevel_ctx_t* ctx, mevel_cb_t cb, int fd, int evmas
 }
 
 
-mevel_event_t*  mevel_ini_tot(mevel_ctx_t* ctx, mevel_cb_t cb, int timeout, int period)
+mevel_event_t*  mevel_ini_timer(mevel_ctx_t* ctx, mevel_cb_t cb, int timeout, int period)
 {
     if (cb == NULL) return NULL;
 
@@ -441,9 +446,9 @@ mevel_err_t  mevel_add_fio(mevel_ctx_t* ctx, mevel_cb_t cb, int fd, int evmask)
     return mevel_add(ctx, event);
 }
 
-mevel_err_t  mevel_add_tot(mevel_ctx_t* ctx, mevel_cb_t cb, int timeout, int period)
+mevel_err_t  mevel_add_timer(mevel_ctx_t* ctx, mevel_cb_t cb, int timeout, int period)
 {
-    mevel_event_t* event = mevel_ini_tot(ctx, cb, timeout, period);
+    mevel_event_t* event = mevel_ini_timer(ctx, cb, timeout, period);
     if (!event) return MEVEL_ERR_NULL;
 
     return mevel_add(ctx, event);
