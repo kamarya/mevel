@@ -313,7 +313,7 @@ mevel_event_t*  mevel_ini_tcp(mevel_ctx_t* ctx, mevel_cb_t cb, int stype, const 
         return NULL;
     }
 #else // for those who do not support POSIX
-    if (ioctl(ev->fd, FIOBIO, &flags) < 0)
+    if (ioctl(ev->fd, FIONBIO, &flags) < 0)
     {
         close(ev->fd);
         free(ev);
@@ -441,7 +441,7 @@ mevel_err_t mevel_ini_sig_add(mevel_event_t* ev, int signum)
 mevel_err_t  mevel_add_fio(mevel_ctx_t* ctx, mevel_cb_t cb, int fd, int evmask)
 {
     mevel_event_t* event = mevel_ini_fio(ctx, cb, fd, evmask);
-    if (!event) return MEVEL_ERR_NULL;
+    if (!event) return MEVEL_ERR_FIO;
 
     return mevel_add(ctx, event);
 }
@@ -449,7 +449,7 @@ mevel_err_t  mevel_add_fio(mevel_ctx_t* ctx, mevel_cb_t cb, int fd, int evmask)
 mevel_err_t  mevel_add_timer(mevel_ctx_t* ctx, mevel_cb_t cb, int timeout, int period)
 {
     mevel_event_t* event = mevel_ini_timer(ctx, cb, timeout, period);
-    if (!event) return MEVEL_ERR_NULL;
+    if (!event) return MEVEL_ERR_TIMER;
 
     return mevel_add(ctx, event);
 }
@@ -457,7 +457,7 @@ mevel_err_t  mevel_add_timer(mevel_ctx_t* ctx, mevel_cb_t cb, int timeout, int p
 mevel_err_t  mevel_add_tcp(mevel_ctx_t* ctx, mevel_cb_t cb, int stype, const char* straddr, int port, int evmask)
 {
     mevel_event_t* event = mevel_ini_tcp(ctx, cb, stype, straddr, port, evmask);
-    if (!event) return MEVEL_ERR_NULL;
+    if (!event) return MEVEL_ERR_TCP;
 
     return mevel_add(ctx, event);
 }
@@ -465,7 +465,7 @@ mevel_err_t  mevel_add_tcp(mevel_ctx_t* ctx, mevel_cb_t cb, int stype, const cha
 mevel_err_t  mevel_add_udp(mevel_ctx_t* ctx, mevel_cb_t cb, int stype, const char* straddr, int port, int evmask)
 {
     mevel_event_t* event = mevel_ini_udp(ctx, cb, stype, straddr, port, evmask);
-    if (!event) return MEVEL_ERR_NULL;
+    if (!event) return MEVEL_ERR_UDP;
 
     return mevel_add(ctx, event);
 }
@@ -475,7 +475,7 @@ mevel_err_t  mevel_add_sig(mevel_ctx_t* ctx, mevel_cb_t cb, int count, ...)
     if (count < 1) return MEVEL_ERR_SIGNAL;
 
     mevel_event_t* event = mevel_ini_sig(ctx, cb);
-    if (!event) return MEVEL_ERR_NULL;
+    if (!event) return MEVEL_ERR_SIGNAL;
 
     mevel_err_t ret = MEVEL_ERR_NONE;
     va_list argp;
