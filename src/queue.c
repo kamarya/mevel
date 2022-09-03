@@ -1,5 +1,5 @@
 /*
- *   Copyright 2018 Behrooz Kamary Aliabadi
+ *   Copyright 2018 Behrooz Kamary
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -98,9 +98,9 @@ void*  queue_del(queue_ctx_t* ctx, queue_t*  elem)
 
             ctx->size--;
 
-			ptr = elem->ptr;
-			free(elem);
-			break;
+            ptr = elem->ptr;
+            free(elem);
+            break;
         }
 
         pelem = celem;
@@ -163,8 +163,8 @@ void	queue_del_ptr(queue_ctx_t* ctx, void* ptr)
 
             ctx->size--;
             if (celem->ptr != NULL) free(celem->ptr);
-			free(celem);
-			break;
+            free(celem);
+            break;
         }
 
         pelem = celem;

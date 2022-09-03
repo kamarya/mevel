@@ -18,11 +18,13 @@
 #include <sys/socket.h>
 #include <sys/timerfd.h>
 #include <sys/epoll.h>
+#include <signal.h>
 #include <sys/signalfd.h>
 #include <sys/un.h>
 #include <unistd.h>
 
 #include <stdexcept>
+#include <initializer_list>
 
 #include <mevel.hpp>
 
@@ -33,18 +35,32 @@ mevel::mevel()
 : epollfd(0)
 , running(0)
 , eventmap()
+, error_flag(MEVEL_ERR_NONE)
 {
     epollfd = epoll_create1(EPOLL_CLOEXEC);
 
     if (epollfd < 0)
     {
+        // we can not do anything hereafter; just throw and exception
         throw exception("epoll_create1(EPOLL_CLOEXEC) failed.", MEVEL_ERR_CONSTRUCTOR);
     }
+
+    ev_signal.fd = -1;
 }
 
 mevel::~mevel()
 {
     if (epollfd > 0) ::close(epollfd);
+}
+
+void mevel::clear_error_flag()
+{
+    error_flag = MEVEL_ERR_NONE;
+}
+
+error_en mevel::get_error_flag()
+{
+    return error_flag;
 }
 
 bool mevel::run()
@@ -65,10 +81,10 @@ bool mevel::run()
 
         if (nfds < 0)
         {
-            if (errno == EINTR) throw exception("main event loop hang up failure", MEVEL_ERR_HUP);
-            else throw exception("main event loop wait failure", MEVEL_ERR_WAIT);
+            if (errno == EINTR) error_flag = MEVEL_ERR_HUP;
+            else error_flag = MEVEL_ERR_WAIT;
             running = 0x00;
-            break;
+            return false;
         }
         else if (nfds == 0)
         {
@@ -78,7 +94,7 @@ bool mevel::run()
         for (int indx = 0; indx < nfds; indx++)
         {
             int fd = (int)events[indx].data.fd;
-            const mevent& ev = eventmap[fd];
+            mevent& ev = eventmap[fd];
             if (events[indx].events == 0) continue;
             if (ev.cb && ev.fd > 0)
             {
@@ -90,14 +106,7 @@ bool mevel::run()
                         add_fio(ev.cb, fd, ev.evmask);
                     }
                 }
-                else if (ev.cb)
-                {
-                    if (ev.cb(ev, events[indx].events) != MEVEL_ERR_NONE)
-                    {
-                        del(ev);
-                    }
-                }
-                else
+                if (ev.cb(ev, events[indx].events) != MEVEL_ERR_NONE)
                 {
                     del(ev);
                 }
@@ -108,39 +117,45 @@ bool mevel::run()
     return true;
 }
 
-void mevel::add(mevent ev)
+bool mevel::add(mevent ev)
 {
+    clear_error_flag();
+
+    if (ev.fd < 0 || eventmap.find(ev.fd) != eventmap.end())
+    {
+        error_flag = MEVEL_ERR_ADD;
+        return false;
+    }
+
     ev.event.data.fd = ev.fd;
 
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, ev.fd, &ev.event) < 0)
     {
-        throw exception("add to the main event loop failed", MEVEL_ERR_ADD);
+        error_flag = MEVEL_ERR_ADD;
+        return false;
     }
 
     eventmap.insert(std::make_pair(ev.fd, ev));
+
+    return true;
 }
 
-void mevel::del(mevent ev)
+bool mevel::del(mevent& ev)
 {
-    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, ev.fd, &ev.event) < 0)
-    {
-        throw exception("delete from the main event loop failed", MEVEL_ERR_DEL);
-    }
+    clear_error_flag();
 
-    if (eventmap.find(ev.fd) == eventmap.end())
+    if (eventmap.find(ev.fd) == eventmap.end() || eventmap.erase(ev.fd) != 1)
     {
-        throw exception("this event has not been registered", MEVEL_ERR_DEL);
+        error_flag = MEVEL_ERR_DEL;
     }
-
-    if (eventmap.erase(ev.fd) != 1)
+    else if (epoll_ctl(epollfd, EPOLL_CTL_DEL, ev.fd, &ev.event) < 0)
     {
-        throw exception("this event erasure failed", MEVEL_ERR_DEL);
+        error_flag = MEVEL_ERR_DEL;
     }
-
-    if (ev.fd > 0) ::close(ev.fd);
+    return (error_flag == MEVEL_ERR_NONE);
 }
 
-void mevel::add_fio(callback_t cb, int fd, int evmask)
+bool mevel::add_fio(callback_t cb, int fd, int evmask)
 {
     mevent              ev;
     ev.type             = MEVEL_TYPE_IO;
@@ -148,10 +163,10 @@ void mevel::add_fio(callback_t cb, int fd, int evmask)
     ev.event.events     = evmask;
     ev.fd               = fd;
 
-    add(ev);
+    return add(ev);
 }
 
-void mevel::add_timer(callback_t cb, int timeout, int period)
+bool mevel::add_timer(callback_t cb, int timeout, int period)
 {
     mevent              ev;
     ev.type             = MEVEL_TYPE_TIMER;
@@ -176,10 +191,72 @@ void mevel::add_timer(callback_t cb, int timeout, int period)
     {
         ::close(ev.fd);
         ev.fd = -1;
-        throw exception("adding timer failed", MEVEL_ERR_TIMER);
+        error_flag = MEVEL_ERR_TIMER;
+        return false;
     }
 
-    add(ev);
+    return add(ev);
+}
+
+bool mevel::add_signal(callback_t cb, int signum)
+{
+    error_flag = MEVEL_ERR_SIGNAL;
+    if (!cb) return false;
+
+    if (ev_signal.fd < 0)
+    {
+        sigemptyset(&ev_signal.smask);
+
+        ev_signal.type            = MEVEL_TYPE_SIGNAL;
+        ev_signal.event.events    = MEVEL_READ;
+
+        if (sigprocmask(SIG_BLOCK, &ev_signal.smask, NULL) == 0)
+        {
+            ev_signal.fd          = signalfd(-1, &ev_signal.smask, SFD_NONBLOCK | SFD_CLOEXEC);
+            if (ev_signal.fd <= 0)
+            {
+                ev_signal.fd = -1;
+                return false;
+            }
+        }
+        else return false;
+    }
+
+    if (eventmap.find(ev_signal.fd) != eventmap.end())
+    {
+        if (!del(ev_signal)) return false;
+    }
+
+    sigaddset(&ev_signal.smask, signum);
+
+    if (sigprocmask(SIG_BLOCK, &ev_signal.smask, NULL) == 0)
+    {
+        if (signalfd(ev_signal.fd, &ev_signal.smask, SFD_NONBLOCK | SFD_CLOEXEC) != ev_signal.fd)
+        {
+            return false;
+        }
+    }
+    else return false;
+
+    ev_signal.cb = cb;
+
+
+    clear_error_flag();
+    return add(ev_signal);
+}
+
+bool mevel::add_signal(callback_t cb, std::initializer_list<int> signums)
+{
+    error_flag = MEVEL_ERR_SIGNAL;
+    if (!cb) return false;
+
+    for (auto elem : signums)
+    {
+        if (!add_signal(cb, elem)) return false;
+    }
+
+    clear_error_flag();
+    return true;
 }
 
 }

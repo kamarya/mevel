@@ -19,6 +19,7 @@
 #include <functional>
 #include <unordered_map>
 #include <exception>
+#include <string>
 #include <sys/epoll.h>
 
 #define MEVEL_MAX_EVENTS    10
@@ -85,19 +86,27 @@ private:
     int                                 epollfd;
     char                                running;
     std::unordered_map <int, mevent>    eventmap;
+    error_en                            error_flag;
+    mevent                              ev_signal;
 
+    bool add(mevent ev);
+    bool del(mevent& ev);
 
 public:
 
     mevel();
     ~mevel();
 
-    void add(mevent ev);
-    void add_timer(callback_t cb, int timeout, int period);
-    void add_fio(callback_t cb, int fd, int evmask);
-    bool add_tcp();
-    bool add_udp();
-    void del(mevent ev);
+    bool add_timer(callback_t cb, int timeout, int period);
+    bool add_fio(callback_t cb, int fd, int evmask);
+    bool add_tcp(callback_t cb, int stype, const char* straddr, int port, int evmask);
+    bool add_udp(callback_t cb, int stype, const char* straddr, int port, int evmask);
+    bool add_signal(callback_t cb, int sig);
+    bool add_signal(callback_t cb, std::initializer_list<int> signums);
+
+    void clear_error_flag();
+    error_en get_error_flag();
+
     bool run();
 };
 
