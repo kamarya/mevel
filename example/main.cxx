@@ -18,7 +18,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/signalfd.h>
-#include <mevel.hpp>
+
+#include <mevel.h>
 
 mevel::error_en  timer(const mevel::mevent& ev, int flags)
 {
@@ -32,6 +33,33 @@ mevel::error_en  timer(const mevel::mevent& ev, int flags)
 
     if (tot_exp > 20) return mevel::MEVEL_ERR_STOP;
 
+    return mevel::MEVEL_ERR_NONE;
+}
+
+mevel::error_en  udp(const mevel::mevent& ev, int flags)
+{
+    char buf[1024];
+    memset(buf, 0x00, 1024);
+
+    if (read(ev.fd, buf, 1024) > 0)
+    {
+        printf( "UDP data (%s)\n", buf);
+        return mevel::MEVEL_ERR_NONE;
+    }
+
+    return mevel::MEVEL_ERR_CLOSE;
+}
+
+mevel::error_en  tcp(const mevel::mevent& ev, int flags)
+{
+    char buf[1024];
+    memset(buf, 0x00, 1024);
+
+    if (read(ev.fd, buf, 1024) > 0)
+    {
+        printf( "TCP data (%s)\n", buf);
+        return mevel::MEVEL_ERR_CLOSE;
+    }
     return mevel::MEVEL_ERR_NONE;
 }
 
@@ -53,7 +81,19 @@ mevel::error_en  sig_handler(const mevel::mevent& ev, int flags)
 int main (int argc, char** argv)
 {
     mevel::mevel evlp;
+
     evlp.add_timer(timer, 500, 500);
+
+    if (!evlp.add_udp(udp, MEVEL_IPV4, "127.0.0.1", 5252, MEVEL_READ))
+    {
+        std::cerr << "udp failed" << std::endl;
+    }
+
+    if (!evlp.add_tcp(tcp, MEVEL_IPV4, "127.0.0.1", 5251, MEVEL_READ))
+    {
+        std::cerr << "tcp failed" << std::endl;
+    }
+
     if (!evlp.add_signal(sig_handler, {SIGTERM, SIGINT, SIGQUIT}))
     {
         return EXIT_FAILURE;

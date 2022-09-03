@@ -60,6 +60,9 @@ typedef enum {
     MEVEL_ERR_STOP,
     MEVEL_ERR_TIMER,
     MEVEL_ERR_SIGNAL,
+    MEVEL_ERR_UDP,
+    MEVEL_ERR_TCP,
+    MEVEL_ERR_FIO
 } mevel_err_t;
 
 #ifdef __cplusplus

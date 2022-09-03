@@ -18,6 +18,7 @@
 #include <sys/socket.h>
 #include <sys/timerfd.h>
 #include <sys/epoll.h>
+#include <sys/ioctl.h>
 #include <signal.h>
 #include <sys/signalfd.h>
 #include <sys/un.h>
@@ -26,7 +27,7 @@
 #include <stdexcept>
 #include <initializer_list>
 
-#include <mevel.hpp>
+#include <mevel.h>
 
 namespace mevel
 {
@@ -48,7 +49,7 @@ mevel::mevel()
     ev_signal.fd = -1;
 }
 
-mevel::~mevel()
+mevel::~mevel() noexcept
 {
     if (epollfd > 0) ::close(epollfd);
 }
@@ -257,6 +258,134 @@ bool mevel::add_signal(callback_t cb, std::initializer_list<int> signums)
 
     clear_error_flag();
     return true;
+}
+
+bool mevel::add_udp(callback_t cb, int stype, const char* straddr, int port, int evmask)
+{
+    error_flag          = MEVEL_ERR_UDP;
+    mevent              ev;
+    ev.type             = MEVEL_TYPE_IO;
+    ev.cb               = cb;
+    ev.event.events     = evmask;
+
+    if (stype == MEVEL_IPV4 || stype == MEVEL_IPV6)
+    {
+        struct sockaddr_in  baddr;
+        memset(&baddr, 0x00, sizeof(struct sockaddr_in));
+        baddr.sin_family    =   stype;
+        baddr.sin_port      =   htons(port);
+        if (inet_pton(stype, straddr, &baddr.sin_addr) != 1)
+        {
+            return false;
+        }
+
+        ev.fd               =   socket(stype, SOCK_DGRAM, 0);
+
+        if (bind(ev.fd, (struct sockaddr*) &baddr, sizeof(struct sockaddr_in)) < 0)
+        {
+            if (ev.fd > 0) ::close(ev.fd);
+            return false;
+        }
+    }
+    else if (stype == MEVEL_UNIX)
+    {
+        struct sockaddr_un  baddr;
+        baddr.sun_family = AF_UNIX;
+        strncpy(baddr.sun_path, straddr, sizeof(baddr.sun_path) - 1);
+        ev.fd = socket(AF_UNIX, SOCK_DGRAM, 0);
+
+        if (bind(ev.fd, (struct sockaddr*) &baddr, sizeof(struct sockaddr_un)) < 0)
+        {
+            if (ev.fd > 0) ::close(ev.fd);
+            return false;
+        }
+    }
+    else
+    {
+        return false;
+    }
+
+    clear_error_flag();
+    return add(ev);
+}
+
+bool mevel::add_tcp(callback_t cb, int stype, const char* straddr, int port, int evmask)
+{
+    error_flag         = MEVEL_ERR_TCP;
+    mevent              ev;
+    ev.type            = MEVEL_TYPE_ACC;
+    ev.cb              = cb;
+    ev.event.events    = MEVEL_READ;
+    ev.evmask          = evmask;
+
+    if (stype == MEVEL_IPV4 || stype == MEVEL_IPV6)
+    {
+        struct sockaddr_in  baddr;
+        memset(&baddr, 0x00, sizeof(struct sockaddr_in));
+        baddr.sin_family    =   stype;
+        baddr.sin_port      =   htons(port);
+        if (inet_pton(stype, straddr, &baddr.sin_addr) != 1)
+        {
+            return false;
+        }
+
+        ev.fd               =   socket(stype, SOCK_STREAM, 0);
+
+        if (bind(ev.fd, (struct sockaddr*) &baddr, sizeof(struct sockaddr_in)) < 0)
+        {
+            if (ev.fd > 0) ::close(ev.fd);
+            return false;
+        }
+    }
+    else if (stype == MEVEL_UNIX)
+    {
+        struct sockaddr_un  baddr;
+        baddr.sun_family = AF_UNIX;
+        strncpy(baddr.sun_path, straddr, sizeof(baddr.sun_path) - 1);
+        ev.fd = socket(AF_UNIX, SOCK_STREAM, 0);
+
+        if (bind(ev.fd, (struct sockaddr*) &baddr, sizeof(struct sockaddr_un)) < 0)
+        {
+            if (ev.fd > 0) ::close(ev.fd);
+            return false;
+        }
+    }
+    else
+    {
+        return false;
+    }
+
+
+    int flags = 1;
+
+#ifdef O_NONBLOCK
+    flags = fcntl(ev.fd, F_GETFL, 0);
+    if (flags < 0)
+    {
+        close(ev.fd);
+        return false;
+    }
+
+    if (fcntl(ev.fd, F_SETFL, flags | O_NONBLOCK) < 0)
+    {
+        close(ev.fd);
+        return false;
+    }
+#else // for those who do not support POSIX
+    if (ioctl(ev.fd, FIONBIO, &flags) < 0)
+    {
+        ::close(ev.fd);
+        return NULL;
+    }
+#endif
+
+    if (listen(ev.fd, MEVEL_MAX_EVENTS) < 0)
+    {
+        ::close(ev.fd);
+    }
+
+    clear_error_flag();
+    return add(ev);
 }
 
 }
